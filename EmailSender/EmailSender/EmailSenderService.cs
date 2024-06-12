@@ -4,14 +4,17 @@ namespace EmailSender;
 
 public interface IEmailSenderService
 {
-    MimeMessage CreateMessage(string fromEmail, string toEmail, string subject, string body);
+    MimeMessage CreateMessage(string fromName, string fromEmail, string toName, string toEmail, string subject, string body);
     bool SendEmail(MimeMessage message, string server = "smtp.gmail.com");
 }
 
 public class EmailSenderService : IEmailSenderService
 {
-    public EmailSenderService()
+    private readonly AppSettings _appSettings;
+
+    public EmailSenderService(AppSettings appSettings)
     {
+        _appSettings = appSettings;
     }
 
     public bool SendEmail(MimeMessage message, string server = "smtp.gmail.com")
@@ -20,10 +23,9 @@ public class EmailSenderService : IEmailSenderService
         {
             using (var client = new MailKit.Net.Smtp.SmtpClient())
             {
-                client.Connect(server, 587, false);
+                client.Connect(server, _appSettings.EmailCredentials.ServerPort, _appSettings.EmailCredentials.UseSsl);
 
-                // Note: only needed if the SMTP server requires authentication
-                client.Authenticate("m.duke401@gmail.com", "ubuf ezth nckq jcbw\r\n");
+                client.Authenticate(_appSettings.EmailCredentials.FromEmail, _appSettings.EmailCredentials.AppSpecificPassword);
 
                 client.Send(message);
                 client.Disconnect(true);
@@ -38,12 +40,12 @@ public class EmailSenderService : IEmailSenderService
         }
     }
 
-    public MimeMessage CreateMessage(string fromEmail, string toEmail, string subject, string body)
+    public MimeMessage CreateMessage(string fromName, string fromEmail, string toName, string toEmail, string subject, string body)
     {
         var message = new MimeMessage();
 
-        message.From.Add(new MailboxAddress("Joey Tribbiani", fromEmail));
-        message.To.Add(new MailboxAddress("ToMailName", toEmail));
+        message.From.Add(new MailboxAddress(fromName, fromEmail));
+        message.To.Add(new MailboxAddress(toName, toEmail));
         message.Subject = subject;
         message.Body = new TextPart("plain")
         {
